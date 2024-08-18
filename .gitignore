@@ -23,3 +23,5 @@ libs/
 lib64/
 bin/
 include/
+
+firebase-cred.json
