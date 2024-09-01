@@ -15,6 +15,7 @@ ASTRA_DB_COLLECTION = "gen_ai_family"
 
 embedding = OpenAIEmbeddings()
 
+# Initialize the vector store
 vstore = AstraDBVectorStore(
     embedding=embedding,
     collection_name=ASTRA_DB_COLLECTION,
@@ -22,6 +23,7 @@ vstore = AstraDBVectorStore(
     api_endpoint=os.environ["ASTRA_DB_API_ENDPOINT"],
 )
 
+# Check if the collection is empty, then add the documents
 if vstore.collection.count_documents()['status']['count'] == 0:
 
     chamils_description = """
@@ -50,8 +52,25 @@ if vstore.collection.count_documents()['status']['count'] == 0:
         ids=["Chamil", "Shammika", "Ayan", "Ayanna"]
     )
 
-retriever = vstore.as_retriever()
+# Perform similarity search using the vector store
+relevant_docs = vstore.similarity_search("What is the color of Chamil's car?", k=2)  
+for (doc) in relevant_docs:
+    print(doc.page_content)
+print("-----------------------------------------------------------")
 
+# Initialize the retriever
+retriever = vstore.as_retriever(
+    serch_type="similarity_score_threshold",
+    search_kwargs = {"k": 2, "score_threshold": 0.8}
+)
+
+# Perform retrieval using the retriever
+relevant_docs = retriever.invoke("What is the color of Chamil's car?")
+for doc in relevant_docs:
+    print(doc.page_content)
+print("-----------------------------------------------------------")    
+
+# Define the prompt template
 prompt_template = """
 You are a friend of Chamil.
 Context: {context}.
@@ -61,6 +80,7 @@ prompt = ChatPromptTemplate.from_template(prompt_template)
 
 model = ChatOpenAI()
 
+# Define the chain
 chain = (
     {"context": retriever, "question": RunnablePassthrough()}
     | prompt
