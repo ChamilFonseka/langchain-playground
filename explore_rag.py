@@ -5,55 +5,56 @@ from langchain_astradb import AstraDBVectorStore
 from langchain.prompts import ChatPromptTemplate
 from langchain.schema.output_parser import StrOutputParser 
 from langchain.schema.runnable import RunnablePassthrough
+from langchain.text_splitter import CharacterTextSplitter, RecursiveCharacterTextSplitter
+from langchain_community.document_loaders import TextLoader
 
 load_dotenv()
 
 ASTRA_DB_APPLICATION_TOKEN = os.environ.get("ASTRA_DB_APPLICATION_TOKEN")
 ASTRA_DB_API_ENDPOINT = os.environ.get("ASTRA_DB_API_ENDPOINT")
 OPEN_AI_API_KEY = os.environ.get("OPENAI_API_KEY")
-ASTRA_DB_COLLECTION = "gen_ai_family"
+ASTRA_DB_COLLECTION = "gen_ai_john_doe"
 
+current_dir = os.path.dirname(os.path.realpath(__file__))
+file_path = os.path.join(current_dir, "docs", "biography-of-john-doe.txt")
+
+if not os.path.exists(file_path):
+    raise FileNotFoundError(f"File not found: {file_path}")
+
+# Load the document
+loader = TextLoader(file_path)
+documents = loader.load()
+
+# Add metadata to the document, astradb will add the source metadata by default.
+# No need to add it manually.
+# for document in documents:
+#     document.metadata = {"source": file_path}
+
+
+# Split the document into chunks
+# text_splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=100)
+text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=100)
+document_chunks   = text_splitter.split_documents(documents)
+
+# Initialize the embedding model
 embedding = OpenAIEmbeddings()
 
 # Initialize the vector store
 vstore = AstraDBVectorStore(
     embedding=embedding,
     collection_name=ASTRA_DB_COLLECTION,
-    token=os.environ["ASTRA_DB_APPLICATION_TOKEN"],
-    api_endpoint=os.environ["ASTRA_DB_API_ENDPOINT"],
+    token=ASTRA_DB_APPLICATION_TOKEN,
+    api_endpoint=ASTRA_DB_API_ENDPOINT,
 )
 
 # Check if the collection is empty, then add the documents
 if vstore.collection.count_documents()['status']['count'] == 0:
+    vstore.add_documents(document_chunks)
 
-    chamils_description = """
-    Chamil Harshana Fonseka was born on September 17, 1989. He is a married man and a Software Engineer. 
-    His wife's name is M.M. Shamika. They have a son and a daughter. Their son's name is Ayan Aloka Fonseka, 
-    and their daughter is Ayanna Akeshi Fonseka. Chamil lives in Colombo, Sri Lanka, and drives a red 2001 Honda Civic.
-    """
-
-    shammikas_description = """
-    M.M. Shamika was born on September 1, 1989. She is married to Chamil. She was an Account Executive.
-    After the birth of their son, she stopped working and became a housewife.
-    """
-
-    ayans_description = """
-    Ayan Aloka Fonseka was born on December 29, 2019. He is a playful boy who still goes to nursery. 
-    His favorite cartoon is Sonic. He likes racing cars too and loves his younger sister Ayanna very much.
-    """
-
-    ayannas_description = """
-    Ayanna Akeshi Fonseka was born on April 14, 2022. She is a cute little girl who always plays with her brother Ayan. 
-    Her favorite food is chocolate.
-    """
-
-    vstore.add_texts(
-        texts=[chamils_description, shammikas_description, ayans_description, ayannas_description], 
-        ids=["Chamil", "Shammika", "Ayan", "Ayanna"]
-    )
+similarity_search_query = "Who is Emily Rivers?"
 
 # Perform similarity search using the vector store
-relevant_docs = vstore.similarity_search("What is the color of Chamil's car?", k=2)  
+relevant_docs = vstore.similarity_search(similarity_search_query, k=2)  
 for (doc) in relevant_docs:
     print(doc.page_content)
 print("-----------------------------------------------------------")
@@ -65,14 +66,14 @@ retriever = vstore.as_retriever(
 )
 
 # Perform retrieval using the retriever
-relevant_docs = retriever.invoke("What is the color of Chamil's car?")
+relevant_docs = retriever.invoke(similarity_search_query)
 for doc in relevant_docs:
     print(doc.page_content)
-print("-----------------------------------------------------------")    
+print("-----------------------------------------------------------")   
 
 # Define the prompt template
 prompt_template = """
-You are a friend of Chamil.
+You are a friend of John Doe.
 Context: {context}.
 Question: {question}?"""
 
@@ -88,10 +89,6 @@ chain = (
     | StrOutputParser()
 )
 
-print(chain.invoke("Who are the members of Chamil's family?"))
-print(chain.invoke("What was Chamil's wife's job?"))
-print(chain.invoke("What is Ayan's favorite cartoon?"))
-print(chain.invoke("What is Ayanna's favorite food?"))
-print(chain.invoke("Where does Chamil live?"))
-print(chain.invoke("What car does Chamil drive?"))
-
+print(chain.invoke("Who are the members of John's family?"))
+print(chain.invoke("What was John's wife's job?"))
+print(chain.invoke("What was the John's first book?"))
