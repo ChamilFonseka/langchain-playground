@@ -1,5 +1,6 @@
 langchain-openai
 langchain_core
+langchainhub
 python-dotenv
 langchain_google_firestore 
 ragstack-ai
