@@ -5,7 +5,6 @@ load_dotenv()
 from langchain import hub
 from langchain.agents import create_openai_functions_agent
 from langchain_openai import ChatOpenAI
-from langgraph.prebuilt import ToolExecutor
 from langchain_community.tools.tavily_search import TavilySearchResults
 
 tools = [TavilySearchResults(max_results=1)]
