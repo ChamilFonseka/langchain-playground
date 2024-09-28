@@ -5,3 +5,5 @@ python-dotenv
 langchain_google_firestore 
 ragstack-ai
 wikipedia
+langgraph 
+tavily-python

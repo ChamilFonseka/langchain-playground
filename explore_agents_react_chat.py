@@ -28,7 +28,7 @@ tools = [
         func=get_current_time,
         description="Useful for when you need to know the current time",
     ),
-        Tool(
+    Tool(
         name="Wikipedia",
         func=search_wikipedia,
         description="Useful for when you need to know information about a topic",
