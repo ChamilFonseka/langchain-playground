@@ -45,19 +45,41 @@ graph_builder.add_conditional_edges(
 # Any time a tool is called, we return to the chatbot to decide the next step
 graph_builder.add_edge("tools", "chatbot")
 graph_builder.set_entry_point("chatbot")
-graph = graph_builder.compile(checkpointer=memory)
+graph = graph_builder.compile(
+    checkpointer=memory,
+    # This is new!
+    interrupt_before=["tools"],
+    # Note: can also interrupt __after__ tools, if desired.
+    # interrupt_after=["tools"]
+)
 #---------------------------------------------------------------------- 
 
 def stream_graph_updates(user_input: str, chat_id: str):
     config = {"configurable": {"thread_id": chat_id}}
-    for event in graph.stream({"messages": [("user", user_input)]}, config):
-        for value in event.values():
-            print("Assistant:", value["messages"][-1].content)
+    # for event in graph.stream({"messages": [("user", user_input)]}, config):
+    #     for value in event.values():
+    #         print("Assistant:", value["messages"][-1].content)
 
-    # events = graph.stream({"messages": [("user", user_input)]}, config, stream_mode="values"
-    # )
-    # for event in events:
-    #     event["messages"][-1].pretty_print()
+    events = graph.stream(
+        {"messages": [("user", user_input)]}, config, stream_mode="values"
+    )
+    for event in events:
+        if "messages" in event:
+            event["messages"][-1].pretty_print()
+
+    # inspect the graph state
+    snapshot = graph.get_state(config)
+    snapshot.next
+
+    # check the tool invocation
+    existing_message = snapshot.values["messages"][-1]
+    existing_message.tool_calls
+
+    # `None` will append nothing new to the current state, letting it resume as if it had never been interrupted
+    events = graph.stream(None, config, stream_mode="values")
+    for event in events:
+        if "messages" in event:
+            event["messages"][-1].pretty_print()
 #----------------------------------------------------------------------     
 
 import uuid
